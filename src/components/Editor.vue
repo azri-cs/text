@@ -5,67 +5,68 @@
 
 <template>
 	<div id="editor-container"
-		ref="el"
-		data-text-el="editor-container"
-		class="text-editor"
-		tabindex="-1"
-		@keydown.stop="onKeyDown">
+		 ref="el"
+		 data-text-el="editor-container"
+		 class="text-editor"
+		 tabindex="-1"
+		 @keydown.stop="onKeyDown">
 		<DocumentStatus v-if="displayedStatus"
-			:idle="idle"
-			:lock="lock"
-			:is-resolving-conflict="isResolvingConflict"
-			:sync-error="syncError"
-			:has-connection-issue="hasConnectionIssue"
-			@reconnect="reconnect" />
+						:idle="idle"
+						:lock="lock"
+						:is-resolving-conflict="isResolvingConflict"
+						:sync-error="syncError"
+						:has-connection-issue="hasConnectionIssue"
+						@reconnect="reconnect" />
 
 		<SkeletonLoading v-if="showLoadingSkeleton" />
 		<Wrapper v-if="displayed"
-			:is-resolving-conflict="isResolvingConflict"
-			:has-connection-issue="hasConnectionIssue"
-			:content-loaded="contentLoaded"
-			:show-outline-outside="showOutlineOutside"
-			@outline-toggled="outlineToggled">
+				 :is-resolving-conflict="isResolvingConflict"
+				 :has-connection-issue="hasConnectionIssue"
+				 :content-loaded="contentLoaded"
+				 :show-outline-outside="showOutlineOutside"
+				 @outline-toggled="outlineToggled">
 			<MainContainer v-if="hasEditor">
 				<!-- Readonly -->
 				<div v-if="readOnly" class="text-editor--readonly-bar">
 					<slot name="readonlyBar">
 						<ReadonlyBar>
 							<Status :document="document"
-								:dirty="dirty"
-								:sessions="filteredSessions"
-								:sync-error="syncError"
-								:has-connection-issue="hasConnectionIssue" />
+									:dirty="dirty"
+									:sessions="filteredSessions"
+									:sync-error="syncError"
+									:has-connection-issue="hasConnectionIssue" />
 						</ReadonlyBar>
 					</slot>
 				</div>
 				<!-- Rich Menu -->
 				<template v-else>
 					<MenuBar v-if="renderMenus"
-						ref="menubar"
-						:is-hidden="hideMenu"
-						:loaded.sync="menubarLoaded">
+							 ref="menubar"
+							 :is-hidden="hideMenu"
+							 :loaded.sync="menubarLoaded">
 						<Status :document="document"
-							:dirty="dirty"
-							:sessions="filteredSessions"
-							:sync-error="syncError"
-							:has-connection-issue="hasConnectionIssue" />
+								:dirty="dirty"
+								:sessions="filteredSessions"
+								:sync-error="syncError"
+								:has-connection-issue="hasConnectionIssue"
+								@editor-width-change="handleEditorWidthChange" />
 						<slot name="header" />
 					</MenuBar>
 					<div v-else class="menubar-placeholder" />
 				</template>
 				<ContentContainer v-show="contentLoaded"
-					ref="contentWrapper" />
+								  ref="contentWrapper" />
 			</MainContainer>
 			<Reader v-if="isResolvingConflict"
-				:content="syncError.data.outsideChange"
-				:is-rich-editor="isRichEditor" />
+					:content="syncError.data.outsideChange"
+					:is-rich-editor="isRichEditor" />
 		</Wrapper>
 		<Assistant v-if="hasEditor" />
 		<Translate :show="translateModal"
-			:content="translateContent"
-			@insert-content="translateInsert"
-			@replace-content="translateReplace"
-			@close="hideTranslate" />
+				   :content="translateContent"
+				   @insert-content="translateInsert"
+				   @replace-content="translateReplace"
+				   @close="hideTranslate" />
 	</div>
 </template>
 
@@ -321,12 +322,21 @@ export default {
 				},
 			}
 		},
+		editorMaxWidth() {
+			return loadState('text', 'is_full_width_editor', false) ? '100%' : '80ch'
+		},
 	},
 	watch: {
 		displayed() {
 			this.$nextTick(() => {
 				this.contentWrapper = this.$refs.contentWrapper
 			})
+		},
+		editorMaxWidth: {
+			immediate: true,
+			handler(newWidth) {
+				this.updateEditorWidth(newWidth)
+			},
 		},
 	},
 	mounted() {
@@ -860,6 +870,19 @@ export default {
 			})
 			this.translateModal = false
 		},
+
+		handleEditorWidthChange(newWidth) {
+			this.updateEditorWidth(newWidth)
+			this.$nextTick(() => {
+				if (this.$editor) {
+					this.$editor.view.updateState(this.$editor.view.state)
+					this.$editor.commands.focus()
+				}
+			})
+		},
+		updateEditorWidth(newWidth) {
+			document.documentElement.style.setProperty('--text-editor-max-width', newWidth)
+		},
 	},
 }
 </script>
@@ -931,75 +954,75 @@ export default {
 </style>
 
 <style lang="scss">
-	@import './../css/variables';
-	@import './../css/style';
-	@import './../css/print';
+@import './../css/variables';
+@import './../css/style';
+@import './../css/print';
 
-	.text-editor__wrapper {
-		@import './../css/prosemirror';
+.text-editor__wrapper {
+	@import './../css/prosemirror';
 
-		// relative position for the alignment of the menububble
-		.text-editor__main {
-			&.draggedOver {
-				background-color: var(--color-primary-element-light);
-			}
-			.text-editor__content-wrapper {
-				position: relative;
-			}
+	// relative position for the alignment of the menububble
+	.text-editor__main {
+		&.draggedOver {
+			background-color: var(--color-primary-element-light);
+		}
+		.text-editor__content-wrapper {
+			position: relative;
 		}
 	}
+}
 
-	.text-editor__wrapper.has-conflicts > .editor {
-		width: 50%;
+.text-editor__wrapper.has-conflicts > .editor {
+	width: 50%;
+}
+
+.text-editor__wrapper.has-conflicts > .content-wrapper {
+	width: 50%;
+	#read-only-editor {
+		margin: 0px auto;
+		padding-top: 50px;
+		overflow: initial;
+	}
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* Give a remote user a caret */
+.collaboration-cursor__caret {
+	position: relative;
+	margin-left: -1px;
+	margin-right: -1px;
+	border-left: 1px solid #0D0D0D;
+	border-right: 1px solid #0D0D0D;
+	word-break: normal;
+	pointer-events: none;
+}
+
+/* Render the username above the caret */
+.collaboration-cursor__label {
+	position: absolute;
+	top: -1.4em;
+	left: -1px;
+	font-size: 12px;
+	font-style: normal;
+	font-weight: 600;
+	line-height: normal;
+	user-select: none;
+	color: #0D0D0D;
+	padding: 0.1rem 0.3rem;
+	border-radius: 3px 3px 3px 0;
+	white-space: nowrap;
+	opacity: 0;
+
+	&.collaboration-cursor__label__active {
+		opacity: 1;
 	}
 
-	.text-editor__wrapper.has-conflicts > .content-wrapper {
-		width: 50%;
-		#read-only-editor {
-			margin: 0px auto;
-			padding-top: 50px;
-			overflow: initial;
-		}
+	&:not(.collaboration-cursor__label__active) {
+		transition: opacity 0.2s 5s;
 	}
-
-	@keyframes spin {
-		0% { transform: rotate(0deg); }
-		100% { transform: rotate(360deg); }
-	}
-
-	/* Give a remote user a caret */
-	.collaboration-cursor__caret {
-		position: relative;
-		margin-left: -1px;
-		margin-right: -1px;
-		border-left: 1px solid #0D0D0D;
-		border-right: 1px solid #0D0D0D;
-		word-break: normal;
-		pointer-events: none;
-	}
-
-	/* Render the username above the caret */
-	.collaboration-cursor__label {
-		position: absolute;
-		top: -1.4em;
-		left: -1px;
-		font-size: 12px;
-		font-style: normal;
-		font-weight: 600;
-		line-height: normal;
-		user-select: none;
-		color: #0D0D0D;
-		padding: 0.1rem 0.3rem;
-		border-radius: 3px 3px 3px 0;
-		white-space: nowrap;
-		opacity: 0;
-
-		&.collaboration-cursor__label__active {
-			opacity: 1;
-		}
-
-		&:not(.collaboration-cursor__label__active) {
-			transition: opacity 0.2s 5s;
-		}
-	}
+}
 </style>
